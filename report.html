@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Safety Portal | Crime Trend Mining</title>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { background-color: #05070e; padding-top: 80px; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; background: rgba(16, 20, 36, 0.8); border: 1px solid rgba(0, 243, 255, 0.15); border-radius: 12px; }
+        
+        .tabs { display: flex; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 2rem; overflow-x: auto; padding-bottom: 1rem;}
+        .tab-btn { background: transparent; color: var(--text-secondary); border: none; font-size: 1.1rem; padding: 0.5rem 1rem; cursor: pointer; font-weight: bold; white-space: nowrap; transition: color 0.3s; }
+        .tab-btn:hover { color: #fff; }
+        .tab-btn.active { color: var(--neon-blue); border-bottom: 2px solid var(--neon-blue); }
+        
+        .tab-content { display: none; animation: fadeIn 0.5s ease-in-out; }
+        .tab-content.active { display: block; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        #mapPicker { height: 300px; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--neon-blue); }
+        
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: #fff; font-weight: bold; }
+        .form-group input, .form-group select, .form-group textarea { 
+            width: 100%; padding: 12px; border-radius: 6px; 
+            border: 1px solid rgba(0, 243, 255, 0.2); 
+            background: rgba(0,0,0,0.5); color: #fff; font-family: inherit;
+        }
+        .form-group input[type="file"] { background: transparent; padding: 10px 0; }
+        
+        .btn { padding: 12px 20px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; width: 100%; font-size: 1.1rem; }
+        .btn-primary { background: var(--neon-blue); color: #000; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 15px rgba(0,243,255,0.4); }
+        
+        .btn-danger { background: var(--neon-red); color: #fff; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 0 15px rgba(255,42,42,0.4); }
+        
+        /* Mobile fixes */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; margin: 0 10px; }
+            .grid-2, .flex-row { flex-direction: column !important; }
+        }
+        .flex-row { display: flex; gap: 1rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <i class="fa-solid fa-shield-halved highlight"></i>
+            CrimeTrend<span class="highlight">Mining</span>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="report.html" style="color: var(--neon-blue);">Public Services</a></li>
+            </ul>
+        </nav>
+        <div>
+            <a href="login.html" class="auth-btn">Admin Login</a>
+        </div>
+    </header>
+
+    <div class="container animate-up">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('general')"><i class="fa-solid fa-bullhorn"></i> General Report</button>
+            <button class="tab-btn" onclick="switchTab('sos')"><i class="fa-solid fa-truck-medical"></i> Emergency SOS</button>
+            <button class="tab-btn" onclick="switchTab('missing')"><i class="fa-solid fa-person-circle-question"></i> Missing Person</button>
+        </div>
+        
+        <!-- Tab 1: General Report -->
+        <div id="general" class="tab-content active">
+            <h2 style="margin-bottom: 1rem; text-align: center;"><i class="fa-solid fa-bullhorn" style="color: #00f3ff;"></i> Submit General Incident</h2>
+            <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">Drop a pin on the map to anonymously report suspicious activity or crimes.</p>
+            
+            <form id="reportForm">
+                <div class="form-group">
+                    <label>1. Location (Click to drop pin or Auto-Detect)</label>
+                    <button type="button" class="btn btn-primary" style="background: #222; color: #fff; margin-bottom: 10px; width: auto; font-size: 0.9rem;" onclick="getGeneralGPS()"><i class="fa-solid fa-location-crosshairs"></i> Fetch My Location</button>
+                    <div id="mapPicker"></div>
+                    <input type="hidden" id="lat" required>
+                    <input type="hidden" id="lng" required>
+                    <p id="locationStatus" style="color: var(--neon-red); font-size: 0.85rem; margin-top: 5px;">* Please select a location.</p>
+                </div>
+                
+                <div class="flex-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>2. Incident Type</label>
+                        <select id="type" required>
+                            <option value="" disabled selected>Select type...</option>
+                            <option value="Theft">Theft / Robbery</option>
+                            <option value="Assault">Assault</option>
+                            <option value="Vandalism">Vandalism</option>
+                            <option value="Suspicious Activity">Suspicious Activity</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>3. Severity</label>
+                        <select id="severity" required>
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High (Immediate Dispatch)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>4. Area / Neighborhood Name</label>
+                    <input type="text" id="area" placeholder="e.g., Downtown Sector 4" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="submitBtn">Submit Report Securely</button>
+                <div id="msg" style="text-align: center; margin-top: 1rem; font-weight: bold;"></div>
+            </form>
+        </div>
+
+        <!-- Tab 2: Emergency SOS -->
+        <div id="sos" class="tab-content">
+            <h2 style="margin-bottom: 1rem; text-align: center;"><i class="fa-solid fa-truck-medical" style="color: var(--neon-red);"></i> Emergency SOS Dispatch</h2>
+            <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">Instantly trigger a high-severity alert. The nearest patrol unit will be dispatched to your GPS location.</p>
+            
+            <form id="sosForm">
+                <div class="flex-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Your Name (Optional)</label>
+                        <input type="text" id="sosName" placeholder="Anonymous">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Phone Number</label>
+                        <input type="tel" id="sosPhone" placeholder="10-digit mobile number" maxlength="10" pattern="[0-9]{10}" oninput="this.value = this.value.replace(/[^0-9]/g, '');" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Attach Media Evidence (Photo/Video)</label>
+                    <input type="file" id="sosMedia" accept="image/*,video/*">
+                </div>
+
+                <div class="form-group" style="background: rgba(255,42,42,0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,42,42,0.3);">
+                    <label style="color: var(--neon-red);"><i class="fa-solid fa-location-crosshairs"></i> GPS Tracking</label>
+                    <p style="font-size: 0.9rem; color: #ccc; margin-bottom: 10px;">We need your location to dispatch officers.</p>
+                    <button type="button" class="btn btn-primary" style="background: #222; color: #fff; width: auto;" onclick="getGPS()">Auto-Detect Location</button>
+                    <div id="gpsStatus" style="margin-top: 10px; font-weight: bold; color: var(--neon-red);">* Location not acquired yet</div>
+                    <input type="hidden" id="sosLat" required>
+                    <input type="hidden" id="sosLng" required>
+                </div>
+
+                <button type="submit" class="btn btn-danger" id="sosSubmitBtn"><i class="fa-solid fa-triangle-exclamation"></i> SEND SOS ALERT</button>
+                <div id="sosMsg" style="text-align: center; margin-top: 1rem; font-weight: bold;"></div>
+            </form>
+        </div>
+
+        <!-- Tab 3: Missing Person Registry -->
+        <div id="missing" class="tab-content">
+            <h2 style="margin-bottom: 1rem; text-align: center;"><i class="fa-solid fa-person-circle-question" style="color: #00f3ff;"></i> Missing Person Database</h2>
+            <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">Register a missing person. Our AI Surveillance Agents will actively scan CCTV feeds for their biometric profile.</p>
+            
+            <form id="missingForm">
+                <div class="flex-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Full Name of Missing Person</label>
+                        <input type="text" id="mpName" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Age</label>
+                        <input type="number" id="mpAge" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Your Contact Number (10 Digits)</label>
+                    <input type="tel" id="mpContact" maxlength="10" pattern="[0-9]{10}" oninput="this.value = this.value.replace(/[^0-9]/g, '');" required placeholder="e.g. 9876543210">
+                </div>
+                
+                <div class="form-group" style="background: rgba(0,243,255,0.05); padding: 1rem; border-radius: 8px; border: 1px dashed rgba(0,243,255,0.4);">
+                    <label style="color: var(--neon-blue);"><i class="fa-solid fa-camera-retro"></i> Clear Facial Photo</label>
+                    <p style="font-size: 0.9rem; color: #ccc; margin-bottom: 10px;">Upload a high-quality, front-facing image for our Facial Recognition engine.</p>
+                    <input type="file" id="mpImage" accept="image/*" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="mpSubmitBtn"><i class="fa-solid fa-user-plus"></i> Register & Start Search</button>
+                <div id="mpMsg" style="text-align: center; margin-top: 1rem; font-weight: bold;"></div>
+            </form>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+            
+            if(tabId === 'general' && map) {
+                setTimeout(() => map.invalidateSize(), 200);
+            }
+        }
+
+        let map;
+        document.addEventListener('DOMContentLoaded', () => {
+            // General Map
+            map = L.map('mapPicker').setView([20.5937, 78.9629], 5);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap', subdomains: 'abcd', maxZoom: 20
+            }).addTo(map);
+
+            window.generalMarker = null;
+            map.on('click', function(e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                document.getElementById('lat').value = lat;
+                document.getElementById('lng').value = lng;
+                document.getElementById('locationStatus').style.color = '#00f3ff';
+                document.getElementById('locationStatus').innerText = `Location Selected: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                
+                if(window.generalMarker) map.removeLayer(window.generalMarker);
+                window.generalMarker = L.marker([lat, lng]).addTo(map);
+            });
+
+            // 1. General Submit
+            document.getElementById('reportForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if(!document.getElementById('lat').value) {
+                    alert("Please click the map to select a location first.");
+                    return;
+                }
+                const btn = document.getElementById('submitBtn');
+                btn.disabled = true; btn.innerText = "Submitting...";
+                const payload = {
+                    type: document.getElementById('type').value,
+                    severity: document.getElementById('severity').value,
+                    area: document.getElementById('area').value,
+                    lat: parseFloat(document.getElementById('lat').value),
+                    lng: parseFloat(document.getElementById('lng').value)
+                };
+                try {
+                    const res = await fetch('/api/report_incident', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if(res.ok) {
+                        document.getElementById('msg').innerHTML = '<span style="color: #00f3ff;"><i class="fa-solid fa-check-circle"></i> Report submitted successfully. Thank you.</span>';
+                        document.getElementById('reportForm').reset();
+                        if(window.generalMarker) map.removeLayer(window.generalMarker);
+                    } else document.getElementById('msg').innerHTML = '<span style="color: var(--neon-red);">Failed to submit report.</span>';
+                } catch(err) { document.getElementById('msg').innerHTML = '<span style="color: var(--neon-red);">Network Error.</span>'; }
+                btn.disabled = false; btn.innerText = "Submit Report Securely";
+            });
+
+            // 2. SOS Submit
+            document.getElementById('sosForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if(!document.getElementById('sosLat').value) {
+                    alert("Please get your GPS location first.");
+                    return;
+                }
+                const btn = document.getElementById('sosSubmitBtn');
+                btn.disabled = true; btn.innerText = "Transmitting SOS...";
+                
+                const formData = new FormData();
+                formData.append('name', document.getElementById('sosName').value);
+                formData.append('phone', document.getElementById('sosPhone').value);
+                formData.append('lat', document.getElementById('sosLat').value);
+                formData.append('lng', document.getElementById('sosLng').value);
+                
+                const fileInput = document.getElementById('sosMedia');
+                if(fileInput.files[0]) formData.append('media', fileInput.files[0]);
+
+                try {
+                    const res = await fetch('/api/sos', { method: 'POST', body: formData });
+                    if(res.ok) {
+                        document.getElementById('sosMsg').innerHTML = '<span style="color: #00f3ff;"><i class="fa-solid fa-check-circle"></i> SOS Dispatched! Police are on the way.</span>';
+                        document.getElementById('sosForm').reset();
+                    } else document.getElementById('sosMsg').innerHTML = '<span style="color: var(--neon-red);">Failed to dispatch SOS. Call local authorities!</span>';
+                } catch(err) { document.getElementById('sosMsg').innerHTML = '<span style="color: var(--neon-red);">Network Error.</span>'; }
+                btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> SEND SOS ALERT';
+            });
+
+            // 3. Missing Person Submit
+            document.getElementById('missingForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = document.getElementById('mpSubmitBtn');
+                btn.disabled = true; btn.innerText = "Extracting Biometrics...";
+                
+                const formData = new FormData();
+                formData.append('name', document.getElementById('mpName').value);
+                formData.append('age', document.getElementById('mpAge').value);
+                formData.append('contact', document.getElementById('mpContact').value);
+                
+                const fileInput = document.getElementById('mpImage');
+                if(fileInput.files[0]) formData.append('image', fileInput.files[0]);
+
+                try {
+                    const res = await fetch('/api/missing_person/register', { method: 'POST', body: formData });
+                    if(res.ok) {
+                        document.getElementById('mpMsg').innerHTML = '<span style="color: #00f3ff;"><i class="fa-solid fa-check-circle"></i> Registered in Biometric DB.</span>';
+                        document.getElementById('missingForm').reset();
+                    } else {
+                        const err = await res.json();
+                        document.getElementById('mpMsg').innerHTML = `<span style="color: var(--neon-red);">${err.error || 'Failed to register.'}</span>`;
+                    }
+                } catch(err) { document.getElementById('mpMsg').innerHTML = '<span style="color: var(--neon-red);">Network Error.</span>'; }
+                btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Register & Start Search';
+            });
+        });
+
+        function getGeneralGPS() {
+            const status = document.getElementById('locationStatus');
+            status.innerText = "Acquiring satellites...";
+            status.style.color = "orange";
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        document.getElementById('lat').value = lat;
+                        document.getElementById('lng').value = lng;
+                        
+                        try {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                            const data = await res.json();
+                            if(data && data.address) {
+                                const areaName = data.address.city || data.address.town || data.address.suburb || data.address.village || "";
+                                document.getElementById('area').value = areaName;
+                            }
+                        } catch(e) {}
+                        
+                        status.innerText = `GPS Locked: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                        status.style.color = "#00f3ff";
+                        
+                        if(window.generalMarker) map.removeLayer(window.generalMarker);
+                        window.generalMarker = L.marker([lat, lng]).addTo(map);
+                        map.setView([lat, lng], 15);
+                    },
+                    (error) => {
+                        status.innerText = "GPS Access Denied. Please drop a pin manually.";
+                        status.style.color = "var(--neon-red)";
+                    }
+                );
+            } else {
+                status.innerText = "Geolocation is not supported.";
+                status.style.color = "var(--neon-red)";
+            }
+        }
+
+        function getGPS() {
+            const status = document.getElementById('gpsStatus');
+            status.innerText = "Acquiring satellites...";
+            status.style.color = "orange";
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        document.getElementById('sosLat').value = position.coords.latitude;
+                        document.getElementById('sosLng').value = position.coords.longitude;
+                        status.innerText = `GPS Locked: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+                        status.style.color = "#00f3ff";
+                    },
+                    (error) => {
+                        status.innerText = "GPS Access Denied or Failed. Please allow location.";
+                        status.style.color = "var(--neon-red)";
+                    }
+                );
+            } else {
+                status.innerText = "Geolocation is not supported by this browser.";
+                status.style.color = "var(--neon-red)";
+            }
+        }
+    </script>
+</body>
+</html>

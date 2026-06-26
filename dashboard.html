@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard | Crime Trend Mining</title>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet & Plugins CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { background-color: #05070e; padding-top: 80px; }
+        .dashboard-container { padding: 2rem 5%; }
+        
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: rgba(16, 20, 36, 0.8);
+            border: 1px solid rgba(0, 243, 255, 0.15);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .stat-icon {
+            font-size: 2.5rem;
+            color: var(--neon-blue);
+        }
+        .stat-card h3 { font-size: 2rem; margin: 0; color: #fff; }
+        .stat-card p { color: var(--text-secondary); margin: 0; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        .panel {
+            background: rgba(16, 20, 36, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .panel-title {
+            margin-bottom: 1rem;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 0.5rem;
+        }
+        
+        #crimeMap {
+            height: 450px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            z-index: 1; /* Keep map below navbar */
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        /* Responsive Dashboard */
+        @media (max-width: 1024px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .stat-cards { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* AI Chatbot */
+        .ai-widget { position: fixed; bottom: 20px; right: 20px; width: 320px; background: rgba(16, 20, 36, 0.95); border: 1px solid var(--neon-blue); border-radius: 12px; z-index: 1000; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 15px rgba(0,243,255,0.2); transition: height 0.3s ease; height: 400px; }
+        .ai-widget.collapsed { height: 45px; }
+        .ai-header { padding: 12px 15px; background: rgba(0, 243, 255, 0.1); color: #fff; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--neon-blue); }
+        .ai-body { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .chat-message { padding: 8px 12px; border-radius: 8px; max-width: 85%; font-size: 0.9rem; line-height: 1.4; word-wrap: break-word; }
+        .chat-message.bot { background: rgba(0, 243, 255, 0.1); color: #00f3ff; align-self: flex-start; border-bottom-left-radius: 0; }
+        .chat-message.user { background: rgba(255, 255, 255, 0.1); color: #fff; align-self: flex-end; border-bottom-right-radius: 0; }
+        .ai-footer { padding: 10px; display: flex; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .ai-footer input { flex: 1; padding: 8px 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; }
+        .ai-footer button { padding: 8px 12px; background: var(--neon-blue); color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <i class="fa-solid fa-shield-halved highlight"></i>
+            CrimeTrend<span class="highlight">Mining</span>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+            </ul>
+        </nav>
+        <div>
+            <button id="themeToggleBtn" style="background: transparent; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; margin-right: 1rem;"><i class="fa-solid fa-moon"></i></button>
+            <span id="userRoleDisplay" style="color: var(--text-secondary); margin-right: 1rem; text-transform: capitalize;"></span>
+            <a href="admin.html" id="adminLink" style="display: none; color: var(--neon-blue); margin-right: 1rem; text-decoration: none; font-weight: bold;"><i class="fa-solid fa-gear"></i> Admin Panel</a>
+            <a href="report.html" id="officerReportLink" style="display: none; color: #ffaa00; margin-right: 1rem; text-decoration: none; font-weight: bold;"><i class="fa-solid fa-pen-to-square"></i> Officer Report</a>
+            <a href="#" id="logoutBtn" class="auth-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </div>
+    </header>
+
+    <div class="dashboard-container animate-up" id="pdf-content">
+        <h2 style="margin-bottom: 1.5rem;"><i class="fa-solid fa-earth-americas" style="color: var(--neon-blue);"></i> Real-Time Intelligence</h2>
+        
+        <!-- Filters Panel -->
+        <div class="filters-panel" style="display: flex; gap: 1rem; margin-bottom: 2rem; align-items: center; background: rgba(16, 20, 36, 0.6); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="flex: 1;">
+                <label style="color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase;">Date Range</label>
+                <input type="text" id="dateRange" placeholder="Select dates..." style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,243,255,0.2); color: #fff; border-radius: 4px;">
+            </div>
+            <div style="flex: 1;">
+                <label style="color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase;">Crime Type</label>
+                <select id="filterType" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,243,255,0.2); color: #fff; border-radius: 4px;">
+                    <option value="">All Types</option>
+                    <option value="Theft">Theft</option>
+                    <option value="Assault">Assault</option>
+                    <option value="Vandalism">Vandalism</option>
+                    <option value="Burglary">Burglary</option>
+                    <option value="Cyber/Fraud">Cyber/Fraud</option>
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <label style="color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase;">Area/City</label>
+                <input type="text" id="filterArea" placeholder="e.g. Delhi" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,243,255,0.2); color: #fff; border-radius: 4px;">
+            </div>
+            <div>
+                <label style="display: block; visibility: hidden;">Action</label>
+                <button id="applyFiltersBtn" style="padding: 8px 15px; border-radius: 4px; border: none; background: var(--neon-blue); color: #000; cursor: pointer; font-weight: bold;">Apply</button>
+            </div>
+            <div style="margin-left: auto;">
+                <label style="display: block; visibility: hidden;">Export</label>
+                <button id="exportPdfBtn" style="padding: 8px 15px; border-radius: 4px; border: none; background: #fff; color: #000; cursor: pointer; font-weight: bold;"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
+            </div>
+        </div>
+        
+        <!-- Live Stats -->
+        <div class="stat-cards">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation" style="color: var(--neon-red);"></i></div>
+                <div>
+                    <h3 id="stat-incidents">-</h3>
+                    <p>Incidents (30 Days)</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fa-solid fa-brain"></i></div>
+                <div>
+                    <h3 id="stat-accuracy">-</h3>
+                    <p>AI Prediction Acc.</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+                <div>
+                    <h3 id="stat-reports">-</h3>
+                    <p>Citizen Reports</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fa-solid fa-car-on"></i></div>
+                <div>
+                    <h3 id="stat-patrols">-</h3>
+                    <p>Active Patrols (Mock)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard View -->
+        <div class="dashboard-grid">
+            <!-- Map Panel -->
+            <div class="panel">
+                <div class="panel-title">
+                    <h4>Spatial Hotspot Map (Demo)</h4>
+                    <span style="font-size: 0.8rem; background: var(--neon-red); padding: 2px 8px; border-radius: 10px; color: #fff;">LIVE</span>
+                </div>
+                <div id="crimeMap"></div>
+            </div>
+
+            <!-- Sidebar Charts -->
+            <div style="display: flex; flex-direction: column; gap: 2rem;">
+                <div class="panel">
+                    <div class="panel-title">
+                        <h4>Crime Distribution</h4>
+                    </div>
+                    <div class="chart-container" style="height: 200px;">
+                        <canvas id="typeChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <div class="panel-title">
+                        <h4>Prediction Alert List</h4>
+                    </div>
+                    <ul id="alertsList" style="list-style: none; padding: 0;">
+                        <!-- Alerts populated by JS -->
+                    </ul>
+                </div>
+
+                <!-- AI Recommendations Panel -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <h4><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--neon-blue);"></i> AI Recommendations</h4>
+                    </div>
+                    <ul id="aiRecommendationsList" style="list-style: none; padding: 0;">
+                        <li style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between;">
+                            <span>Increase patrols in Central District (High Risk Window)</span>
+                            <button style="background: var(--neon-blue); color: #000; border: none; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">Action</button>
+                        </li>
+                        <li style="padding: 10px; display: flex; justify-content: space-between;">
+                            <span>Review recent anomaly trend in South Region</span>
+                            <button style="background: var(--neon-blue); color: #000; border: none; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">Action</button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trend Chart Panel -->
+        <div class="panel">
+            <div class="panel-title">
+                <h4>Temporal Trends (Last 7 Days)</h4>
+            </div>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Messages Panel -->
+        <div class="panel" style="margin-top: 2rem;">
+            <div class="panel-title">
+                <h4><i class="fa-solid fa-inbox" style="margin-right: 0.5rem;"></i> Citizen Inquiries</h4>
+            </div>
+            <div id="messagesList" style="max-height: 350px; overflow-y: auto; padding-right: 1rem;">
+                <p style="color: var(--text-secondary); text-align: center; padding: 1rem;">Loading messages...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Auth & Logic Script -->
+    <script>
+        function esc(s) {
+            if (!s) return '';
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+        const fetchWithAuth = async (url) => {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(url, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.status === 401 || res.status === 422) {
+                localStorage.removeItem('auth_token');
+                window.location.href = 'login.html';
+            }
+            return res;
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('auth_token');
+            const role = localStorage.getItem('user_role');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Set role display
+            if (role) {
+                document.getElementById('userRoleDisplay').innerText = `Role: ${role}`;
+                if (role === 'admin') {
+                    document.getElementById('adminLink').style.display = 'inline-block';
+                    document.getElementById('officerReportLink').style.display = 'inline-block';
+                } else if (role === 'officer') {
+                    document.getElementById('officerReportLink').style.display = 'inline-block';
+                }
+            }
+
+            document.getElementById('logoutBtn').addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user_role');
+                window.location.href = 'login.html';
+            });
+
+            fetchDashboardData();
+            
+            // Connect to WebSocket
+            const socket = io({
+                auth: { token: token } // Optional auth passing
+            });
+            
+            socket.on('connect', () => {
+                console.log('Connected to LIVE WebSocket');
+                document.querySelector('.panel-title span').style.boxShadow = "0 0 10px var(--neon-red)";
+            });
+
+            socket.on('data_updated', () => {
+                console.log('Live data update received, refreshing dashboard...');
+                fetchDashboardData();
+                if(window.refreshChartsAndMap) {
+                    window.refreshChartsAndMap();
+                }
+            });
+
+            socket.on('critical_alert', (data) => {
+                const alertsList = document.getElementById('alertsList');
+                const li = document.createElement('li');
+                li.style = "padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; background: rgba(255, 42, 42, 0.2); animation: pulse 2s infinite;";
+                li.innerHTML = `<span><strong>LIVE:</strong> ${data.message}</span><span style="color: var(--neon-red);"><i class="fa-solid fa-triangle-exclamation"></i> Score: ${data.score}</span>`;
+                alertsList.prepend(li);
+            });
+
+            // Theme Toggle
+            const themeBtn = document.getElementById('themeToggleBtn');
+            themeBtn.addEventListener('click', () => {
+                document.body.classList.toggle('light-theme');
+                if (document.body.classList.contains('light-theme')) {
+                    themeBtn.innerHTML = '<i class="fa-solid fa-sun" style="color: #f39c12;"></i>';
+                } else {
+                    themeBtn.innerHTML = '<i class="fa-solid fa-moon"></i>';
+                }
+            });
+
+            // Initialize Flatpickr
+            flatpickr("#dateRange", { mode: "range", dateFormat: "Y-m-d" });
+            
+            // Apply Filters button
+            document.getElementById('applyFiltersBtn').addEventListener('click', () => {
+                fetchDashboardData();
+                if(window.refreshChartsAndMap) window.refreshChartsAndMap();
+            });
+
+            // Export PDF
+            document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('exportPdfBtn');
+                btn.innerText = "Exporting...";
+                btn.disabled = true;
+                
+                try {
+                    const canvas = await html2canvas(document.getElementById('pdf-content'), {
+                        backgroundColor: '#05070e',
+                        scale: 2
+                    });
+                    const imgData = canvas.toDataURL('image/jpeg', 0.8);
+                    const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save("crime_analytics_report.pdf");
+                } catch(e) {
+                    console.error("PDF Export failed", e);
+                }
+                
+                btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Export PDF';
+                btn.disabled = false;
+            });
+        });
+
+        async function fetchDashboardData() {
+            try {
+                // Get filter values
+                const dateRange = document.getElementById('dateRange').value;
+                const type = document.getElementById('filterType').value;
+                const area = document.getElementById('filterArea').value;
+                
+                let queryStr = `?type=${encodeURIComponent(type)}&area=${encodeURIComponent(area)}`;
+                if (dateRange && dateRange.includes('to')) {
+                    const dates = dateRange.split(' to ');
+                    queryStr += `&start=${dates[0]}&end=${dates[1]}`;
+                }
+
+                // Fetch Stats
+                const response = await fetchWithAuth('/api/stats' + queryStr);
+                const stats = await response.json();
+                document.getElementById('stat-incidents').innerText = stats.incidents;
+                document.getElementById('stat-accuracy').innerText = stats.accuracy;
+                document.getElementById('stat-reports').innerText = stats.reports;
+                document.getElementById('stat-patrols').innerText = stats.patrols;
+                
+                // Fetch Alerts
+                const alertsRes = await fetchWithAuth('/api/alerts');
+                const alerts = await alertsRes.json();
+                document.getElementById('alertsList').innerHTML = alerts.map((alert, index) => {
+                    const isLast = index === alerts.length - 1;
+                    const border = isLast ? '' : 'border-bottom: 1px solid rgba(255,255,255,0.05);';
+                    const icon = alert.trend === 'up' ? '<i class="fa-solid fa-arrow-up"></i>' : '<i class="fa-solid fa-minus"></i>';
+                    const color = alert.trend === 'up' ? 'var(--neon-red)' : 'orange';
+                    return `
+                        <li style="padding: 10px; ${border} display: flex; justify-content: space-between;">
+                            <span>${alert.location}</span>
+                            <span style="color: ${color};">${icon} ${alert.probability}% Prob.</span>
+                        </li>
+                    `;
+                }).join('');
+                
+                // Fetch Messages
+                const msgRes = await fetchWithAuth('/api/messages');
+                const messages = await msgRes.json();
+                const msgContainer = document.getElementById('messagesList');
+                if (messages.length === 0) {
+                    msgContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">No messages available.</p>';
+                } else {
+                    // Show latest messages first
+                    msgContainer.innerHTML = messages.reverse().map(msg => `
+                        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0, 243, 255, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                                <strong><i class="fa-solid fa-user" style="color: var(--neon-blue); margin-right: 0.5rem;"></i> ${esc(msg.name) || 'Anonymous'}</strong>
+                                <span style="font-size: 0.8rem; color: var(--text-secondary);">${new Date(msg.timestamp).toLocaleString()}</span>
+                            </div>
+                            <div style="font-size: 0.85rem; margin-bottom: 0.5rem; color: #a1a1aa;"><i class="fa-solid fa-envelope"></i> ${esc(msg.email) || 'N/A'}</div>
+                            <div style="color: #eee; font-size: 0.95rem; line-height: 1.5;">${esc(msg.message)}</div>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error("Error fetching data:", err);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchDashboardData();
+            
+            // Connect to WebSocket
+            const socket = io({
+                auth: { token: token } // Optional auth passing
+            });
+            
+            socket.on('connect', () => {
+                console.log('Connected to LIVE WebSocket');
+                document.querySelector('.panel-title span').style.boxShadow = "0 0 10px var(--neon-red)";
+            });
+
+            socket.on('data_updated', () => {
+                console.log('Live data update received, refreshing dashboard...');
+                fetchDashboardData();
+                if(window.refreshChartsAndMap) {
+                    window.refreshChartsAndMap();
+                }
+            });
+
+            // Initialize Flatpickr
+            flatpickr("#dateRange", { mode: "range", dateFormat: "Y-m-d" });
+            
+            // Apply Filters button
+            document.getElementById('applyFiltersBtn').addEventListener('click', () => {
+                fetchDashboardData();
+                if(window.refreshChartsAndMap) window.refreshChartsAndMap();
+            });
+
+            // Export PDF
+            document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('exportPdfBtn');
+                btn.innerText = "Exporting...";
+                btn.disabled = true;
+                
+                try {
+                    const canvas = await html2canvas(document.getElementById('pdf-content'), {
+                        backgroundColor: '#05070e',
+                        scale: 2
+                    });
+                    const imgData = canvas.toDataURL('image/jpeg', 0.8);
+                    const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save("crime_analytics_report.pdf");
+                } catch(e) {
+                    console.error("PDF Export failed", e);
+                }
+                
+                btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Export PDF';
+                btn.disabled = false;
+            });
+        });
+    </script>
+
+
+
+    <!-- AI Chatbot Widget -->
+    <div id="aiChatWidget" class="ai-widget collapsed">
+        <div class="ai-header" onclick="toggleChat()">
+            <span><i class="fa-solid fa-robot"></i> AI Analyst Assistant</span>
+            <i class="fa-solid fa-chevron-up" id="chatToggleIcon"></i>
+        </div>
+        <div class="ai-body" id="chatBody">
+            <div class="chat-message bot">Hello! I am your AI Analyst. Ask me about the recent crime trends!</div>
+        </div>
+        <div class="ai-footer">
+            <input type="text" id="chatInput" placeholder="Ask about recent crimes..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
+            <button onclick="sendChatMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/charts.js"></script>
+    <script>
+        function toggleChat() {
+            const widget = document.getElementById('aiChatWidget');
+            const icon = document.getElementById('chatToggleIcon');
+            if (widget.classList.contains('collapsed')) {
+                widget.classList.remove('collapsed');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            } else {
+                widget.classList.add('collapsed');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            }
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if(!message) return;
+            
+            const body = document.getElementById('chatBody');
+            
+            body.innerHTML += `<div class="chat-message user">${message}</div>`;
+            input.value = '';
+            body.scrollTop = body.scrollHeight;
+            
+            const typingId = 'typing-' + Date.now();
+            body.innerHTML += `<div class="chat-message bot" id="${typingId}">Analyzing...</div>`;
+            body.scrollTop = body.scrollHeight;
+            
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('auth_token')
+                    },
+                    body: JSON.stringify({ message })
+                });
+                const data = await res.json();
+                document.getElementById(typingId).remove();
+                
+                if(data.reply) {
+                    body.innerHTML += `<div class="chat-message bot">${data.reply.replace(/\n/g, '<br>')}</div>`;
+                } else {
+                    body.innerHTML += `<div class="chat-message bot" style="color:var(--neon-red)">Error: ${data.error}</div>`;
+                }
+            } catch(e) {
+                document.getElementById(typingId).remove();
+                body.innerHTML += `<div class="chat-message bot" style="color:var(--neon-red)">Network Error.</div>`;
+            }
+            body.scrollTop = body.scrollHeight;
+        }
+    </script>
+</body>
+</html>

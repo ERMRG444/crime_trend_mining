@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel | Crime Trend Mining</title>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { background-color: #05070e; padding-top: 80px; }
+        .dashboard-container { padding: 2rem 5%; }
+        
+        .panel {
+            background: rgba(16, 20, 36, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .panel-title {
+            margin-bottom: 1rem;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 0.5rem;
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; color: #fff; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { background: rgba(0,0,0,0.3); color: var(--neon-blue); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;}
+        tr:hover { background: rgba(0, 243, 255, 0.05); }
+
+        .btn { padding: 8px 15px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; }
+        .btn-primary { background: var(--neon-blue); color: #000; }
+        .btn-danger { background: var(--neon-red); color: #fff; }
+        .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); }
+        .form-group input, .form-group select { 
+            width: 100%; padding: 10px; border-radius: 6px; 
+            border: 1px solid rgba(0, 243, 255, 0.2); 
+            background: rgba(0,0,0,0.5); color: #fff; 
+        }
+
+        .modal { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; 
+        }
+        .modal-content { 
+            background: #0d1121; padding: 2rem; border-radius: 12px; 
+            width: 400px; border: 1px solid var(--neon-blue); 
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <i class="fa-solid fa-shield-halved highlight"></i>
+            CrimeTrend<span class="highlight">Mining</span>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="admin.html" style="color: var(--neon-blue);">Admin</a></li>
+            </ul>
+        </nav>
+        <div>
+            <span style="color: var(--text-secondary); margin-right: 1rem;">Welcome, Admin</span>
+            <a href="#" id="logoutBtn" class="auth-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </div>
+    </header>
+
+    <div class="dashboard-container animate-up">
+        <h2><i class="fa-solid fa-database" style="color: var(--neon-blue);"></i> Data Management Pipeline</h2>
+        
+        <div class="panel" style="margin-top: 1.5rem;">
+            <div class="panel-title">
+                <h4><i class="fa-solid fa-file-csv"></i> Bulk CSV Ingestion & Data Export</h4>
+                <button class="btn btn-primary" onclick="downloadCSV()"><i class="fa-solid fa-download"></i> Download Export</button>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+                Upload a CSV containing: <code>type, lat, lng, severity, status, area, timestamp</code>. 
+                This will automatically update models and notify active dashboard users.
+            </p>
+            <form id="uploadForm" style="display: flex; gap: 1rem; align-items: center;">
+                <input type="file" id="csvFile" accept=".csv" required style="color: #fff;" />
+                <button type="submit" class="btn btn-primary" id="uploadBtn">Upload & Process</button>
+            </form>
+            <div id="uploadMsg" style="margin-top: 10px; font-size: 0.9rem;"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                <h4><i class="fa-solid fa-truck-medical" style="color: var(--neon-red);"></i> Active Emergency SOS Alerts</h4>
+            </div>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name / Phone</th>
+                            <th>Coords (Lat, Lng)</th>
+                            <th>Media Evidence</th>
+                            <th>Timestamp</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sosTableBody">
+                        <tr><td colspan="6" style="text-align: center;">Loading SOS alerts...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                <h4><i class="fa-solid fa-list"></i> Incident Database</h4>
+                <button class="btn btn-primary" onclick="openModal('add')"><i class="fa-solid fa-plus"></i> New Incident</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Area</th>
+                            <th>Coords (Lat, Lng)</th>
+                            <th>Severity</th>
+                            <th>Timestamp</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="incidentTableBody">
+                        <tr><td colspan="7" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                <h4><i class="fa-solid fa-clock-rotate-left"></i> System Audit Trail</h4>
+            </div>
+            <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Action</th>
+                            <th>Role</th>
+                            <th>Details</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditTableBody">
+                        <tr><td colspan="5" style="text-align: center;">Loading audit logs...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Add/Edit -->
+    <div id="incidentModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle" style="color: #fff; margin-bottom: 1rem; margin-top: 0;">Add Incident</h3>
+            <form id="incidentForm">
+                <input type="hidden" id="incidentId">
+                <div class="form-group">
+                    <label>Type</label>
+                    <input type="text" id="incType" required placeholder="e.g. Theft">
+                </div>
+                <div class="form-group">
+                    <label>Area</label>
+                    <input type="text" id="incArea" required placeholder="e.g. North Sector">
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Lat</label>
+                        <input type="number" step="any" id="incLat" required value="28.6139">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Lng</label>
+                        <input type="number" step="any" id="incLng" required value="77.2090">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Severity</label>
+                    <select id="incSeverity">
+                        <option value="High">High</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save</button>
+                    <button type="button" class="btn btn-danger" style="flex: 1;" onclick="closeModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('auth_token');
+        if (!token) { window.location.href = 'login.html'; }
+
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('auth_token');
+            window.location.href = 'index.html';
+        });
+
+        // Load incidents
+        async function fetchIncidents() {
+            try {
+                const res = await fetch('/api/incidents', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                const tbody = document.getElementById('incidentTableBody');
+                
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No records found.</td></tr>';
+                    return;
+                }
+
+                // Show top 50 to avoid freezing
+                tbody.innerHTML = data.reverse().slice(0, 50).map(inc => `
+                    <tr>
+                        <td>${inc.id}</td>
+                        <td>${inc.type}</td>
+                        <td>${inc.area}</td>
+                        <td>${inc.lat.toFixed(4)}, ${inc.lng.toFixed(4)}</td>
+                        <td><span style="color: ${inc.severity === 'High' ? 'var(--neon-red)' : (inc.severity === 'Medium' ? 'orange' : '#00f3ff')}">${inc.severity}</span></td>
+                        <td style="font-size: 0.85rem; color: var(--text-secondary);">${new Date(inc.timestamp).toLocaleString()}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick='openModal("edit", ${JSON.stringify(inc)})'><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteIncident(${inc.id})"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Load SOS Alerts
+        async function fetchSOSAlerts() {
+            try {
+                const res = await fetch('/api/sos_alerts', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                const tbody = document.getElementById('sosTableBody');
+                
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No active SOS alerts.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.map(sos => `
+                    <tr style="background: rgba(255,42,42,0.1);">
+                        <td>${sos.id}</td>
+                        <td>${sos.name}<br><small style="color:var(--text-secondary)">${sos.phone}</small></td>
+                        <td>${sos.lat.toFixed(4)}, ${sos.lng.toFixed(4)}</td>
+                        <td>${sos.media_path ? `<a href="${sos.media_path}" target="_blank" style="color:var(--neon-blue);"><i class="fa-solid fa-paperclip"></i> View Media</a>` : 'No Media'}</td>
+                        <td style="font-size: 0.85rem;">${new Date(sos.timestamp).toLocaleString()}</td>
+                        <td><span style="color: var(--neon-red); font-weight:bold;">${sos.status}</span></td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error("SOS fetch error:", e);
+            }
+        }
+
+        // CSV Upload
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('csvFile');
+            const msg = document.getElementById('uploadMsg');
+            const btn = document.getElementById('uploadBtn');
+            
+            if(!fileInput.files[0]) return;
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch('/api/upload_csv', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if(res.ok) {
+                    msg.innerHTML = `<span style="color: #00f3ff;"><i class="fa-solid fa-check"></i> ${data.message} Models are retraining in background.</span>`;
+                    fetchIncidents();
+                } else {
+                    msg.innerHTML = `<span style="color: var(--neon-red);"><i class="fa-solid fa-circle-xmark"></i> ${data.error}</span>`;
+                }
+            } catch (err) {
+                msg.innerHTML = `<span style="color: var(--neon-red);">Network Error.</span>`;
+            }
+            
+            btn.innerText = "Upload & Process";
+            btn.disabled = false;
+        });
+
+        // CRUD Modal Logic
+        const modal = document.getElementById('incidentModal');
+        
+        function openModal(mode, data=null) {
+            document.getElementById('incidentForm').reset();
+            document.getElementById('modalTitle').innerText = mode === 'add' ? 'Add Incident' : 'Edit Incident';
+            
+            if(mode === 'edit' && data) {
+                document.getElementById('incidentId').value = data.id;
+                document.getElementById('incType').value = data.type;
+                document.getElementById('incArea').value = data.area;
+                document.getElementById('incLat').value = data.lat;
+                document.getElementById('incLng').value = data.lng;
+                document.getElementById('incSeverity').value = data.severity;
+            } else {
+                document.getElementById('incidentId').value = '';
+            }
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        document.getElementById('incidentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const id = document.getElementById('incidentId').value;
+            const payload = {
+                type: document.getElementById('incType').value,
+                area: document.getElementById('incArea').value,
+                lat: parseFloat(document.getElementById('incLat').value),
+                lng: parseFloat(document.getElementById('incLng').value),
+                severity: document.getElementById('incSeverity').value,
+                timestamp: new Date().toISOString()
+            };
+            
+            const url = id ? `/api/incidents/${id}` : '/api/incidents';
+            const method = id ? 'PUT' : 'POST';
+            
+            await fetch(url, {
+                method: method,
+                headers: { 
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            closeModal();
+            fetchIncidents();
+        });
+
+        async function deleteIncident(id) {
+            if(confirm('Are you sure you want to delete this incident?')) {
+                await fetch(`/api/incidents/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                fetchIncidents();
+            }
+        }
+
+        async function fetchAuditLogs() {
+            try {
+                const res = await fetch('/api/audit_logs', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                const tbody = document.getElementById('auditTableBody');
+                
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No logs available.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.map(log => `
+                    <tr>
+                        <td>${log.id}</td>
+                        <td style="color:var(--neon-blue); font-weight:bold;">${log.action}</td>
+                        <td>${log.user_role}</td>
+                        <td>${log.details}</td>
+                        <td style="font-size: 0.85rem; color: var(--text-secondary);">${new Date(log.timestamp).toLocaleString()}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error("Audit fetch error:", e);
+            }
+        }
+
+        async function downloadCSV() {
+            try {
+                const res = await fetch('/api/export/csv', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) throw new Error("Export failed");
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'incidents_export.csv';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            } catch (e) {
+                console.error("Error downloading CSV:", e);
+                alert("Failed to download CSV");
+            }
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchIncidents();
+            fetchSOSAlerts();
+            fetchAuditLogs();
+            
+            // Poll for new alerts and logs
+            setInterval(() => {
+                fetchSOSAlerts();
+                fetchAuditLogs();
+            }, 10000);
+        });
+
+    </script>
+</body>
+</html>

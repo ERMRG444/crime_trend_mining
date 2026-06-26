@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crime Trend Mining | Smarter Policing</title>
+    <!-- Use FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <i class="fa-solid fa-shield-halved highlight"></i>
+            CrimeTrend<span class="highlight">Mining</span>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="#home">Home</a></li>
+                <li><a href="#problem">The Problem</a></li>
+                <li><a href="#solution">Solutions & Tech</a></li>
+                <li><a href="#sdg">SDG Impact</a></li>
+                <li><a href="#team">Team</a></li>
+            </ul>
+        </nav>
+        <div>
+            <a href="login.html" class="auth-btn"><i class="fa-solid fa-lock"></i> Staff Login</a>
+            <a href="login.html" class="dashboard-btn"><i class="fa-solid fa-chart-line"></i> View Dashboard</a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero" style="background-image: url('hero_bg.png');">
+        <div class="hero-overlay"></div>
+        <div class="hero-content animate-up">
+            <h1>Smarter Policing Through Data</h1>
+            <p>Transforming complex crime data into actionable intelligence. Leverage spatial analysis, predictive AI, and real-time visualization to understand and combat crime effectively.</p>
+            <div class="cta-group">
+                <a href="login.html" class="btn-primary">Explore Analytics</a>
+                <a href="report.html" class="btn-outline">Public Services Portal</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Statement -->
+    <section id="problem">
+        <h2 class="section-title">The Challenge</h2>
+        <div class="grid-3">
+            <div class="glass-panel">
+                <div class="problem-icon"><i class="fa-solid fa-chart-line"></i></div>
+                <h3>Rising Crime Rates</h3>
+                <p>Urban sprawl and socioeconomic challenges have led to an increase in complex, organized criminal activities that overwhelm traditional policing.</p>
+            </div>
+            <div class="glass-panel">
+                <div class="problem-icon"><i class="fa-solid fa-network-wired"></i></div>
+                <h3>Siloed Data Systems</h3>
+                <p>Crucial intelligence is often trapped in fragmented databases across different government departments, preventing proactive measures.</p>
+            </div>
+            <div class="glass-panel">
+                <div class="problem-icon"><i class="fa-solid fa-user-secret"></i></div>
+                <h3>The Dark Figure of Crime</h3>
+                <p>A massive percentage of crimes remain underreported. Lack of citizen engagement platforms makes mapping real crime density difficult.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution / Features -->
+    <section id="solution">
+        <h2 class="section-title">Data-Driven Solutions</h2>
+        <div class="grid-2">
+            <div class="glass-panel">
+                <div class="solution-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+                <h3>Spatial & Temporal Analysis</h3>
+                <p>Interactive heatmaps that identify crime hotspots based on location and time, enabling optimized patrol deployment and resource allocation.</p>
+            </div>
+            <div class="glass-panel">
+                <div class="solution-icon"><i class="fa-solid fa-brain"></i></div>
+                <h3>Predictive AI Models</h3>
+                <p>Utilizing scikit-learn and historical datasets to forecast potential criminal activities, shifting from reactive responses to preventative strategies.</p>
+            </div>
+            <div class="glass-panel">
+                <div class="solution-icon"><i class="fa-solid fa-mobile-screen"></i></div>
+                <h3>Citizen Reporting Portal</h3>
+                <p>Empowering the public with an easy-to-use mobile-responsive system to report incidents securely, reducing the dark figure of crime.</p>
+                <a href="report.html" class="btn-primary" style="margin-top: 1rem; display: inline-block; text-align: center; width: 100%;">Open Portal <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+            <div class="glass-panel">
+                <div class="solution-icon"><i class="fa-solid fa-server"></i></div>
+                <h3>Unified Data Integration</h3>
+                <p>A robust backend processing pipeline to ingest, clean, and catalog data from multiple agencies into one centralized real-time dashboard.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SDG Impact -->
+    <section id="sdg" style="padding: 0;">
+        <div class="sdg-section" style="padding: 4rem 10%;">
+            <div class="sdg-logo">
+                <img src="https://sdgs.un.org/sites/default/files/goals/E_SDG_Icons-16.jpg" alt="SDG 16 Icon">
+            </div>
+            <div class="sdg-text">
+                <h2 style="font-size: 2rem; margin-bottom: 1rem; color: #fff;">SDG 16: Peace, Justice and Strong Institutions</h2>
+                <p style="color: var(--text-secondary); font-size: 1.1rem; max-width: 800px;">
+                    Our Crime Trend Mining solution directly aligns with the United Nations Sustainable Development Goal 16. 
+                    By utilizing transparent predictive models and integrating citizen feedback, we aim to significantly reduce all forms of violence, 
+                    promote the rule of law, and build effective, accountable, and inclusive law enforcement institutions at all levels.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Team Section -->
+    <section id="team">
+        <h2 class="section-title">Project Team</h2>
+        <div class="grid-2" style="max-width: 800px; margin: 0 auto;">
+            <div class="glass-panel team-member">
+                <div class="team-avatar"><i class="fa-solid fa-user-astronaut"></i></div>
+                <h3>Vinit H Chaudhari</h3>
+                <p>ID: 24BCP241</p>
+                <p>Computer Engineering</p>
+            </div>
+            <div class="glass-panel team-member">
+                <div class="team-avatar"><i class="fa-solid fa-user-ninja"></i></div>
+                <h3>Prince Sodavadiya</h3>
+                <p>ID: 24BCP260</p>
+                <p>Computer Engineering</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Footer -->
+    <footer>
+        <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap;">
+            <a href="report.html" style="color: var(--neon-blue); text-decoration: none; font-weight: bold;"><i class="fa-solid fa-bullhorn"></i> Public Services</a>
+            <a href="login.html" style="color: #fff; text-decoration: none; font-weight: bold;"><i class="fa-solid fa-shield-halved"></i> Officer Login</a>
+        </div>
+        <p style="margin-top: 4rem; color: var(--text-secondary);">
+            &copy; 2026 Crime Trend Mining. Designed by Computer Engineering Students.
+        </p>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
